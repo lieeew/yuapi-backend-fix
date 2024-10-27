@@ -1,25 +1,68 @@
 package com.yupi.project.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.yupi.yuapicommon.model.entity.UserInterfaceInfo;
+import com.yupi.project.model.dto.userinterface.UpdateUserInterfaceInfoDTO;
+import com.yupi.project.model.vo.InterfaceInfoVo;
+import com.yupi.project.model.vo.UserInterfaceInfoVO;
+import com.yupi.yuapicommon.entity.UserInterfaceInfo;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
- * 用户接口信息服务
  *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
  */
 public interface UserInterfaceInfoService extends IService<UserInterfaceInfo> {
 
-    // [编程导航学习圈](https://t.zsxq.com/0emozsIJh) 连接万名编程爱好者，一起优秀！20000+ 小伙伴交流分享、40+ 大厂嘉宾一对一答疑、4000+ 编程问答参考、100+ 各方向编程交流群
 
     void validUserInterfaceInfo(UserInterfaceInfo userInterfaceInfo, boolean add);
 
+
     /**
-     * 调用接口统计
-     * @param interfaceInfoId
+     * 统计接口调用次数
      * @param userId
+     * @param interfaceInfoId
      * @return
      */
-    boolean invokeCount(long interfaceInfoId, long userId);
+    boolean invokeCount(long userId,long interfaceInfoId);
+
+
+    /**
+     * 回滚接口调用次数
+     * @param userId
+     * @param interfaceInfoId
+     * @return
+     */
+    boolean recoverInvokeCount(long userId, long interfaceInfoId);
+
+    /**
+     * 获取接口的剩余调用次数
+     * @param userId
+     * @param interfaceInfoId
+     * @return
+     */
+    int getLeftInvokeCount(long userId, long interfaceInfoId);
+
+
+    /**
+     *更新用户接口信息
+     * @param updateUserInterfaceInfoDTO
+     * @return
+     */
+    boolean updateUserInterfaceInfo(UpdateUserInterfaceInfoDTO updateUserInterfaceInfoDTO);
+
+    /**
+     * 获取用户所拥有的接口列表
+     * @param userId
+     * @param request
+     * @return
+     */
+    List<UserInterfaceInfoVO> getInterfaceInfoByUserId(Long userId, HttpServletRequest request);
+
+    /**
+     * 获取调用次数前limit的接口信息
+     * @param limit
+     * @return
+     */
+    List<InterfaceInfoVo> interfaceInvokeTopAnalysis(int limit);
 }

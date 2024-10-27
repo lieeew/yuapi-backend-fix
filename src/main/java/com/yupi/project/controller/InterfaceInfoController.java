@@ -11,12 +11,12 @@ import com.yupi.project.model.dto.interfaceinfo.InterfaceInfoAddRequest;
 import com.yupi.project.model.dto.interfaceinfo.InterfaceInfoInvokeRequest;
 import com.yupi.project.model.dto.interfaceinfo.InterfaceInfoQueryRequest;
 import com.yupi.project.model.dto.interfaceinfo.InterfaceInfoUpdateRequest;
-import com.yupi.project.model.enums.InterfaceInfoStatusEnum;
+import com.yupi.project.model.enums.InterfaceInfoStateEnum;
 import com.yupi.project.service.InterfaceInfoService;
 import com.yupi.project.service.UserService;
 import com.yupi.yuapiclientsdk.client.YuApiClient;
-import com.yupi.yuapicommon.model.entity.InterfaceInfo;
-import com.yupi.yuapicommon.model.entity.User;
+import com.yupi.yuapicommon.entity.InterfaceInfo;
+import com.yupi.yuapicommon.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -231,7 +231,7 @@ public class InterfaceInfoController {
         // 仅本人或管理员可修改
         InterfaceInfo interfaceInfo = new InterfaceInfo();
         interfaceInfo.setId(id);
-        interfaceInfo.setStatus(InterfaceInfoStatusEnum.ONLINE.getValue());
+        interfaceInfo.setStatus(InterfaceInfoStateEnum.ONLINE.getValue());
         boolean result = interfaceInfoService.updateById(interfaceInfo);
         return ResultUtils.success(result);
     }
@@ -259,7 +259,7 @@ public class InterfaceInfoController {
         // 仅本人或管理员可修改
         InterfaceInfo interfaceInfo = new InterfaceInfo();
         interfaceInfo.setId(id);
-        interfaceInfo.setStatus(InterfaceInfoStatusEnum.OFFLINE.getValue());
+        interfaceInfo.setStatus(InterfaceInfoStateEnum.OFFLINE.getValue());
         boolean result = interfaceInfoService.updateById(interfaceInfo);
         return ResultUtils.success(result);
     }
@@ -284,7 +284,7 @@ public class InterfaceInfoController {
         if (oldInterfaceInfo == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        if (oldInterfaceInfo.getStatus() == InterfaceInfoStatusEnum.OFFLINE.getValue()) {
+        if (oldInterfaceInfo.getStatus() == InterfaceInfoStateEnum.OFFLINE.getValue()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "接口已关闭");
         }
         User loginUser = userService.getLoginUser(request);

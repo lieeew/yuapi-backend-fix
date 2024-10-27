@@ -5,21 +5,21 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * 接口创建请求
+ * 创建请求
  *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
+
  */
 @Data
 public class InterfaceInfoAddRequest implements Serializable {
 
+
     /**
-     * 名称
+     * 接口名称
      */
     private String name;
 
     /**
-     * 描述
+     * 接口描述
      */
     private String description;
 
@@ -27,6 +27,11 @@ public class InterfaceInfoAddRequest implements Serializable {
      * 接口地址
      */
     private String url;
+
+    /**
+     * 请求类型
+     */
+    private String method;
 
     /**
      * 请求参数
@@ -42,10 +47,5 @@ public class InterfaceInfoAddRequest implements Serializable {
      * 响应头
      */
     private String responseHeader;
-
-    /**
-     * 请求类型
-     */
-    private String method;
 
 }

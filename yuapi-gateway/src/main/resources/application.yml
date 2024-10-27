@@ -9,25 +9,27 @@ spring:
       default-filters:
         - AddResponseHeader=source, yupi
       routes:
-        - id: api_route
+        - id: api_interface
           uri: http://localhost:8123
           predicates:
-            - Path=/api/**
-#        - id: add_request_header_route
-#          uri: http://localhost:8123
-#          predicates:
-#            - Path=/api/**
-#          filters:
-#            - AddRequestHeader=yupi, swag
-#            - AddRequestParameter=name, dog
-#            - name: CircuitBreaker
-#              args:
-#                name: myCircuitBreaker
-#                fallbackUri: forward:/fallback
-#        - id: yupi-fallback
-#          uri: https://yupi.icu
-#          predicates:
-#            - Path=/fallback
+            - Path=/api/interface/**
+        - id: api_route
+          uri: http://localhost:8080
+          predicates:
+          - Path=/api/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:8080,http://localhost:8000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            allowedHeaders: "*"
+            allowCredentials: true
+
+
 logging:
   level:
     org:
@@ -36,10 +38,6 @@ logging:
           gateway: trace
 
 dubbo:
-  discovery:
-    server-list: nacos://leikooo.icu:8848
-    connect-timeout: 10000  # 设置连接超时为10秒
-    read-timeout: 5000      # 设置读取超时为5秒
   application:
     name: yuapi-gateway
     qosEnableL: true

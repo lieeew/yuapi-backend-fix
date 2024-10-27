@@ -5,29 +5,28 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  * 查询请求
  *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class InterfaceInfoQueryRequest extends PageRequest implements Serializable {
 
     /**
-     * 主键
+     *
      */
     private Long id;
 
     /**
-     * 名称
+     * 接口名称
      */
     private String name;
 
     /**
-     * 描述
+     * 接口描述
      */
     private String description;
 
@@ -35,6 +34,16 @@ public class InterfaceInfoQueryRequest extends PageRequest implements Serializab
      * 接口地址
      */
     private String url;
+
+    /**
+     * 请求类型
+     */
+    private String method;
+
+    /**
+     * 请求参数
+     */
+    private String requestParams;
 
     /**
      * 请求头
@@ -47,18 +56,19 @@ public class InterfaceInfoQueryRequest extends PageRequest implements Serializab
     private String responseHeader;
 
     /**
-     * 接口状态（0-关闭，1-开启）
+     * 接口状态 0 关闭，1启用
      */
-    private Integer status;
+    private Byte status;
+
 
     /**
-     * 请求类型
+     *
      */
-    private String method;
+    private Date createTime;
 
     /**
-     * 创建人
+     *
      */
-    private Long userId;
+    private Date updateTime;
 
 }

@@ -9,16 +9,21 @@ import com.yupi.project.common.ErrorCode;
 import com.yupi.project.common.ResultUtils;
 import com.yupi.project.exception.BusinessException;
 import com.yupi.project.model.dto.user.*;
+import com.yupi.project.model.vo.LoginUserVO;
+import com.yupi.project.model.vo.UserDevKeyVO;
 import com.yupi.project.model.vo.UserVO;
 import com.yupi.project.service.UserService;
-import com.yupi.yuapicommon.model.entity.User;
+import com.yupi.project.utils.ThrowUtils;
+import com.yupi.yuapicommon.entity.User;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -65,7 +70,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<LoginUserVO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request, HttpServletResponse response) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -74,8 +79,8 @@ public class UserController {
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        User user = userService.userLogin(userAccount, userPassword, request);
-        return ResultUtils.success(user);
+        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request, response);
+        return ResultUtils.success(loginUserVO);
     }
 
     /**
@@ -85,11 +90,11 @@ public class UserController {
      * @return
      */
     @PostMapping("/logout")
-    public BaseResponse<Boolean> userLogout(HttpServletRequest request) {
+    public BaseResponse<Boolean> userLogout(HttpServletRequest request, HttpServletResponse response) {
         if (request == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        boolean result = userService.userLogout(request);
+        boolean result = userService.userLogout(request, response);
         return ResultUtils.success(result);
     }
 
@@ -238,5 +243,99 @@ public class UserController {
         return ResultUtils.success(userVOPage);
     }
 
-    // endregion
+    /**
+     * 获取图形验证码
+     *
+     * @param request
+     * @param response
+     */
+    @GetMapping("/getCaptcha")
+    public void getCaptcha(HttpServletRequest request, HttpServletResponse response) {
+        userService.getCaptcha(request, response);
+    }
+
+    /**
+     * 更新个人信息
+     *
+     * @param userUpdateMyRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/update/my")
+    public BaseResponse<Boolean> updateMyUser(@RequestBody UserUpdateMyRequest userUpdateMyRequest,
+                                              HttpServletRequest request) {
+        if (userUpdateMyRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        User user = new User();
+        BeanUtils.copyProperties(userUpdateMyRequest, user);
+        user.setId(loginUser.getId());
+        boolean result = userService.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 发送邮箱验证码(备案后会改为发送手机短信验证码)
+     * @param emailNum
+     * @return
+     */
+    @GetMapping("/smsCaptcha")
+    public BaseResponse<Boolean> sendCode(@RequestParam String emailNum,@RequestParam String captchaType){
+        if (StringUtils.isBlank(emailNum)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        //^1[3-9]\d{9}$ 手机号正则表达式
+        //^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$    邮箱正则表达式
+        if (!Pattern.matches("[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$", emailNum)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"邮箱格式错误!");
+        }
+
+        userService.sendCode(emailNum,captchaType);
+        return ResultUtils.success(true);
+    }
+
+    @PostMapping("/loginBySms")
+    public BaseResponse<LoginUserVO> userLoginBySms(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request, HttpServletResponse response) {
+        if (userLoginRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        String emailNum = userLoginRequest.getEmailNum();
+        String emailCode = userLoginRequest.getEmailCaptcha();
+        if (StringUtils.isAnyBlank(emailNum, emailCode)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        LoginUserVO user = userService.userLoginBySms(emailNum, emailCode, request, response);
+        return ResultUtils.success(user);
+    }
+
+
+    @GetMapping("/key")
+    public BaseResponse<UserDevKeyVO> getKey(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("id", loginUser.getId());
+        queryWrapper.select("accessKey", "secretKey");
+        User user = userService.getOne(queryWrapper);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        UserDevKeyVO userDevKeyVO = new UserDevKeyVO();
+        userDevKeyVO.setSecretKey(user.getSecretKey());
+        userDevKeyVO.setAccessKey(user.getAccessKey());
+        return ResultUtils.success(userDevKeyVO);
+    }
+
+    @PostMapping("/gen/key")
+    public BaseResponse<UserDevKeyVO> genKey(HttpServletRequest request) {
+        UserDevKeyVO userDevKeyVO = userService.genkey(request);
+        return ResultUtils.success(userDevKeyVO);
+    }
+
+
 }

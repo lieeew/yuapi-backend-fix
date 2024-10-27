@@ -5,28 +5,25 @@ import lombok.Data;
 import java.io.Serializable;
 
 /**
- * 更新请求
+ * 编辑请求
  *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
+
  */
 @Data
 public class InterfaceInfoUpdateRequest implements Serializable {
 
-    // [加入编程导航](https://yupi.icu) 入门捷径+交流答疑+项目实战+求职指导，帮你自学编程不走弯路
-
     /**
-     * 主键
+     *
      */
     private Long id;
 
     /**
-     * 名称
+     * 接口名称
      */
     private String name;
 
     /**
-     * 描述
+     * 接口描述
      */
     private String description;
 
@@ -34,6 +31,11 @@ public class InterfaceInfoUpdateRequest implements Serializable {
      * 接口地址
      */
     private String url;
+
+    /**
+     * 请求类型
+     */
+    private String method;
 
     /**
      * 请求参数
@@ -51,14 +53,9 @@ public class InterfaceInfoUpdateRequest implements Serializable {
     private String responseHeader;
 
     /**
-     * 接口状态（0-关闭，1-开启）
+     * 接口状态 0 关闭，1启用
      */
-    private Integer status;
+    private Byte status;
 
-    /**
-     * 请求类型
-     */
-    private String method;
 
-    private static final long serialVersionUID = 1L;
 }
