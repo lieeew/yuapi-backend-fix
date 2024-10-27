@@ -1,21 +1,30 @@
 package com.yupi.project.controller;
 
+
+import com.alibaba.excel.util.StringUtils;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yupi.project.annotation.AuthCheck;
-import com.yupi.project.common.*;
+import com.yupi.project.common.DeleteRequest;
+import com.yupi.project.common.ErrorCode;
 import com.yupi.project.constant.CommonConstant;
-import com.yupi.project.constant.UserConstant;
+import com.yupi.project.constant.LoginUserInfo;
 import com.yupi.project.exception.BusinessException;
+import com.yupi.project.model.dto.interfaceinfo.InterfaceInfoQueryRequest;
+import com.yupi.project.model.dto.userinterface.UpdateUserInterfaceInfoDTO;
 import com.yupi.project.model.dto.userinterface.UserInterfaceInfoAddRequest;
-import com.yupi.project.model.dto.userinterface.UserInterfaceInfoQueryRequest;
 import com.yupi.project.model.dto.userinterface.UserInterfaceInfoUpdateRequest;
+import com.yupi.project.model.vo.UserInterfaceInfoVO;
+import com.yupi.project.service.InterfaceChargingService;
 import com.yupi.project.service.UserInterfaceInfoService;
 import com.yupi.project.service.UserService;
+import com.yupi.project.utils.RequestAttributeUtil;
+import com.yupi.yuapicommon.common.BaseResponse;
+import com.yupi.yuapicommon.common.ResultUtils;
+import com.yupi.yuapicommon.entity.InterfaceCharging;
 import com.yupi.yuapicommon.entity.User;
 import com.yupi.yuapicommon.entity.UserInterfaceInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,10 +33,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
- * 接口管理
- *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
+ * 用户接口关系controlelr
  */
 @RestController
 @RequestMapping("/userInterfaceInfo")
@@ -40,6 +46,9 @@ public class UserInterfaceInfoController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private InterfaceChargingService interfaceChargingService;
+
     // region 增删改查
 
     /**
@@ -50,7 +59,7 @@ public class UserInterfaceInfoController {
      * @return
      */
     @PostMapping("/add")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuthCheck(mustRole = "admin")
     public BaseResponse<Long> addUserInterfaceInfo(@RequestBody UserInterfaceInfoAddRequest userInterfaceInfoAddRequest, HttpServletRequest request) {
         if (userInterfaceInfoAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -65,11 +74,9 @@ public class UserInterfaceInfoController {
         if (!result) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
-        long newUserInterfaceInfoId = userInterfaceInfo.getId();
-        return ResultUtils.success(newUserInterfaceInfoId);
+        long newInterfaceInfoId = userInterfaceInfo.getId();
+        return ResultUtils.success(newInterfaceInfoId);
     }
-
-    // [加入编程导航](https://t.zsxq.com/0emozsIJh) 深耕编程提升【两年半】、国内净值【最高】的编程社群、用心服务【20000+】求学者、帮你自学编程【不走弯路】
 
     /**
      * 删除
@@ -79,7 +86,7 @@ public class UserInterfaceInfoController {
      * @return
      */
     @PostMapping("/delete")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuthCheck(mustRole = "admin")
     public BaseResponse<Boolean> deleteUserInterfaceInfo(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -107,9 +114,9 @@ public class UserInterfaceInfoController {
      * @return
      */
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuthCheck(mustRole = "admin")
     public BaseResponse<Boolean> updateUserInterfaceInfo(@RequestBody UserInterfaceInfoUpdateRequest userInterfaceInfoUpdateRequest,
-                                                     HttpServletRequest request) {
+                                                         HttpServletRequest request) {
         if (userInterfaceInfoUpdateRequest == null || userInterfaceInfoUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -139,8 +146,8 @@ public class UserInterfaceInfoController {
      * @return
      */
     @GetMapping("/get")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<UserInterfaceInfo> getUserInterfaceInfoById(long id) {
+    @AuthCheck(mustRole = "admin")
+    public BaseResponse<UserInterfaceInfo> getInterfaceInfoById(long id) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -154,9 +161,9 @@ public class UserInterfaceInfoController {
      * @param userInterfaceInfoQueryRequest
      * @return
      */
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @AuthCheck(mustRole = "admin")
     @GetMapping("/list")
-    public BaseResponse<List<UserInterfaceInfo>> listUserInterfaceInfo(UserInterfaceInfoQueryRequest userInterfaceInfoQueryRequest) {
+    public BaseResponse<List<UserInterfaceInfo>> listInterfaceInfo(InterfaceInfoQueryRequest userInterfaceInfoQueryRequest) {
         UserInterfaceInfo userInterfaceInfoQuery = new UserInterfaceInfo();
         if (userInterfaceInfoQueryRequest != null) {
             BeanUtils.copyProperties(userInterfaceInfoQueryRequest, userInterfaceInfoQuery);
@@ -173,9 +180,9 @@ public class UserInterfaceInfoController {
      * @param request
      * @return
      */
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @GetMapping("/list/page")
-    public BaseResponse<Page<UserInterfaceInfo>> listUserInterfaceInfoByPage(UserInterfaceInfoQueryRequest userInterfaceInfoQueryRequest, HttpServletRequest request) {
+    @AuthCheck(mustRole = "admin")
+    public BaseResponse<Page<UserInterfaceInfo>> listInterfaceInfoByPage(InterfaceInfoQueryRequest userInterfaceInfoQueryRequest, HttpServletRequest request) {
         if (userInterfaceInfoQueryRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -196,6 +203,48 @@ public class UserInterfaceInfoController {
         return ResultUtils.success(userInterfaceInfoPage);
     }
 
-    // endregion
+    @GetMapping("/list/userId")
+    public BaseResponse<List<UserInterfaceInfoVO>> getInterfaceInfoByUserId(@RequestParam Long userId, HttpServletRequest request) {
+        List<UserInterfaceInfoVO> userInterfaceInfoVOList = userInterfaceInfoService.getInterfaceInfoByUserId(userId, request);
+        return ResultUtils.success(userInterfaceInfoVOList);
+    }
 
+    /**
+     * 给用户分配免费的调用次数
+     *
+     * @param updateUserInterfaceInfoDTO
+     * @param request
+     * @return
+     */
+    @AuthCheck(mustRole = "user")
+    @PostMapping("/get/free")
+    public BaseResponse<Boolean> getFreeInterfaceCount(@RequestBody UpdateUserInterfaceInfoDTO updateUserInterfaceInfoDTO, HttpServletRequest request) {
+
+        Long interfaceId = updateUserInterfaceInfoDTO.getInterfaceId();
+        User user = (User) RequestAttributeUtil.getSessionAttribute(request, LoginUserInfo.CURRENT_USER);
+        Long lockNum = updateUserInterfaceInfoDTO.getLockNum();
+        updateUserInterfaceInfoDTO.setUserId(user.getId());
+        if (interfaceId == null || lockNum == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        if (lockNum > 100) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您一次性获取的次数太多了");
+        }
+        synchronized (user.getId()) {
+//            User loginUser = userService.getLoginUser(request);
+//            if (!userId.equals(loginUser.getId())) {
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+//            }
+//            long interfaceCharging = interfaceChargingService.count(new QueryWrapper<InterfaceCharging>().eq("interfaceId", interfaceId));
+//            if (interfaceCharging > 0) {
+//                throw new BusinessException(ErrorCode.PARAMS_ERROR, "这个是付费接口噢!");
+//            }
+//            UserInterfaceInfo one = userInterfaceInfoService.getOne(new QueryWrapper<UserInterfaceInfo>().eq("userId", userId).eq("interfaceInfoId", interfaceId));
+//            if (one != null && one.getLeftNum() >= 1000) {
+//                throw new BusinessException(ErrorCode.OPERATION_ERROR, "您获取的次数太多了");
+//            }
+            boolean b = userInterfaceInfoService.updateUserInterfaceInfo(updateUserInterfaceInfoDTO);
+            return ResultUtils.success(b);
+        }
+    }
 }

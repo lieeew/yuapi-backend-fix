@@ -3,21 +3,26 @@ package com.yupi.project.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO;
-import com.yupi.project.common.BaseResponse;
+import com.yupi.project.annotation.AuthCheck;
 import com.yupi.project.common.DeleteRequest;
 import com.yupi.project.common.ErrorCode;
-import com.yupi.project.common.ResultUtils;
+import com.yupi.project.constant.UserConstant;
 import com.yupi.project.exception.BusinessException;
 import com.yupi.project.model.dto.user.*;
 import com.yupi.project.model.vo.LoginUserVO;
 import com.yupi.project.model.vo.UserDevKeyVO;
 import com.yupi.project.model.vo.UserVO;
 import com.yupi.project.service.UserService;
+import com.yupi.project.utils.FileUploadUtil;
 import com.yupi.project.utils.ThrowUtils;
+import com.yupi.yuapicommon.common.BaseResponse;
+import com.yupi.yuapicommon.common.ResultUtils;
 import com.yupi.yuapicommon.entity.User;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -29,17 +34,16 @@ import java.util.stream.Collectors;
 /**
  * 用户接口
  *
- * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
- * @from <a href="https://yupi.icu">编程导航知识星球</a>
  */
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserController {
 
     @Resource
     private UserService userService;
 
-    // region 登录相关
+
 
     /**
      * 用户注册
@@ -56,9 +60,34 @@ public class UserController {
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return null;
+            log.error("账号或密码不能为空!!!");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"账号或密码不能为空!!!");
         }
-        long result = userService.userRegister(userAccount, userPassword, checkPassword);
+
+        long result = userService.userRegister(userAccount, userPassword,checkPassword);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 用户注册
+     *
+     * @param userRegisterRequest
+     * @return
+     */
+    @PostMapping("/email/register")
+    public BaseResponse<Long> userEmailRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
+
+        if (userRegisterRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        String emailCaptcha = userRegisterRequest.getEmailCaptcha();
+        String emailNum = userRegisterRequest.getEmailNum();
+        if (StringUtils.isAnyBlank(emailNum,emailCaptcha)) {
+            log.error("邮箱或邮箱验证码不能为空！！！");
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"邮箱或邮箱验证码不能为空！！！");
+        }
+
+        long result = userService.userEmailRegister(emailNum,emailCaptcha);
         return ResultUtils.success(result);
     }
 
@@ -79,9 +108,11 @@ public class UserController {
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request, response);
+        LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request,response);
         return ResultUtils.success(loginUserVO);
     }
+
+
 
     /**
      * 用户注销
@@ -90,15 +121,13 @@ public class UserController {
      * @return
      */
     @PostMapping("/logout")
-    public BaseResponse<Boolean> userLogout(HttpServletRequest request, HttpServletResponse response) {
+    public BaseResponse<Boolean> userLogout(HttpServletRequest request,HttpServletResponse response) {
         if (request == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        boolean result = userService.userLogout(request, response);
+        boolean result = userService.userLogout(request,response);
         return ResultUtils.success(result);
     }
-
-    // [加入编程导航](https://yupi.icu) 深耕编程提升【两年半】、国内净值【最高】的编程社群、用心服务【20000+】求学者、帮你自学编程【不走弯路】
 
     /**
      * 获取当前登录用户
@@ -107,16 +136,11 @@ public class UserController {
      * @return
      */
     @GetMapping("/get/login")
-    public BaseResponse<UserVO> getLoginUser(HttpServletRequest request) {
+    public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
         User user = userService.getLoginUser(request);
-        UserVO userVO = new UserVO();
-        BeanUtils.copyProperties(user, userVO);
-        return ResultUtils.success(userVO);
+        return ResultUtils.success(userService.getLoginUserVO(user));
     }
 
-    // endregion
-
-    // region 增删改查
 
     /**
      * 创建用户
@@ -126,6 +150,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest, HttpServletRequest request) {
         if (userAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -133,9 +158,7 @@ public class UserController {
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
         boolean result = userService.save(user);
-        if (!result) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR);
-        }
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(user.getId());
     }
 
@@ -147,6 +170,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/delete")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUser(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -163,56 +187,68 @@ public class UserController {
      * @return
      */
     @PostMapping("/update")
-    public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest, HttpServletRequest request) {
+    public BaseResponse<Boolean> updateUser(@RequestBody UserUpdateRequest userUpdateRequest,
+            HttpServletRequest request) {
+
         if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        User user = new User();
-        BeanUtils.copyProperties(userUpdateRequest, user);
-        boolean result = userService.updateById(user);
+        if (StringUtils.isBlank(userUpdateRequest.getUserName())){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户名不能为空");
+        }
+        boolean result  = userService.updateUser(userUpdateRequest,request);
         return ResultUtils.success(result);
     }
 
     /**
-     * 根据 id 获取用户
+     * 更新头像
+     *
+     * @param file
+     * @param request
+     * @return
+     */
+    @PostMapping("/update/avatar")
+    public BaseResponse<Boolean> updateUserAvatar(@RequestParam(required = false) MultipartFile file, HttpServletRequest request) {
+        if (!FileUploadUtil.validate(file)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        boolean result = userService.uploadFileAvatar(file,request);
+        return ResultUtils.success(result);
+    }
+
+
+    /**
+     * 根据 id 获取用户（仅管理员）
      *
      * @param id
      * @param request
      * @return
      */
     @GetMapping("/get")
-    public BaseResponse<UserVO> getUserById(int id, HttpServletRequest request) {
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<User> getUserById(long id, HttpServletRequest request) {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getById(id);
-        UserVO userVO = new UserVO();
-        BeanUtils.copyProperties(user, userVO);
-        return ResultUtils.success(userVO);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
+        return ResultUtils.success(user);
     }
 
     /**
-     * 获取用户列表
+     * 根据 id 获取包装类
      *
-     * @param userQueryRequest
+     * @param id
      * @param request
      * @return
      */
-    @GetMapping("/list")
-    public BaseResponse<List<UserVO>> listUser(UserQueryRequest userQueryRequest, HttpServletRequest request) {
-        User userQuery = new User();
-        if (userQueryRequest != null) {
-            BeanUtils.copyProperties(userQueryRequest, userQuery);
-        }
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>(userQuery);
-        List<User> userList = userService.list(queryWrapper);
-        List<UserVO> userVOList = userList.stream().map(user -> {
-            UserVO userVO = new UserVO();
-            BeanUtils.copyProperties(user, userVO);
-            return userVO;
-        }).collect(Collectors.toList());
-        return ResultUtils.success(userVOList);
+    @GetMapping("/get/vo")
+    public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
+        BaseResponse<User> response = getUserById(id, request);
+        User user = response.getData();
+        return ResultUtils.success(userService.getUserVO(user));
     }
+
 
     /**
      * 分页获取用户列表
@@ -222,16 +258,23 @@ public class UserController {
      * @return
      */
     @GetMapping("/list/page")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<UserVO>> listUserByPage(UserQueryRequest userQueryRequest, HttpServletRequest request) {
         long current = 1;
         long size = 10;
         User userQuery = new User();
         if (userQueryRequest != null) {
             BeanUtils.copyProperties(userQueryRequest, userQuery);
+            userQuery.setPhone(null);
             current = userQueryRequest.getCurrent();
             size = userQueryRequest.getPageSize();
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>(userQuery);
+
+        queryWrapper.like(userQueryRequest != null && StringUtils.isNotBlank(userQueryRequest.getPhoneNum()), "phone", userQueryRequest.getPhoneNum());
+        queryWrapper.ge(StringUtils.isNotBlank(userQueryRequest.getCreateTime()), "createTime", userQueryRequest.getCreateTime());
+        queryWrapper.ge(StringUtils.isNotBlank( userQueryRequest.getUpdateTime()), "phoneNum", userQueryRequest.getUpdateTime());
+
         Page<User> userPage = userService.page(new Page<>(current, size), queryWrapper);
         Page<UserVO> userVOPage = new PageDTO<>(userPage.getCurrent(), userPage.getSize(), userPage.getTotal());
         List<UserVO> userVOList = userPage.getRecords().stream().map(user -> {
@@ -240,6 +283,32 @@ public class UserController {
             return userVO;
         }).collect(Collectors.toList());
         userVOPage.setRecords(userVOList);
+        return ResultUtils.success(userVOPage);
+    }
+
+
+    /**
+     * 分页获取用户封装列表
+     *
+     * @param userQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/list/page/vo")
+    public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest,
+            HttpServletRequest request) {
+        if (userQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        long current = userQueryRequest.getCurrent();
+        long size = userQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        Page<User> userPage = userService.page(new Page<>(current, size),
+                userService.getQueryWrapper(userQueryRequest));
+        Page<UserVO> userVOPage = new Page<>(current, size, userPage.getTotal());
+        List<UserVO> userVO = userService.getUserVO(userPage.getRecords());
+        userVOPage.setRecords(userVO);
         return ResultUtils.success(userVOPage);
     }
 
@@ -263,7 +332,7 @@ public class UserController {
      */
     @PostMapping("/update/my")
     public BaseResponse<Boolean> updateMyUser(@RequestBody UserUpdateMyRequest userUpdateMyRequest,
-                                              HttpServletRequest request) {
+            HttpServletRequest request) {
         if (userUpdateMyRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }

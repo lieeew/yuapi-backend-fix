@@ -3,8 +3,10 @@ package com.yupi.project.aop;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.yupi.project.annotation.AuthCheck;
 import com.yupi.project.common.ErrorCode;
+import com.yupi.project.constant.LoginUserInfo;
 import com.yupi.project.exception.BusinessException;
 import com.yupi.project.service.UserService;
+import com.yupi.project.utils.RequestAttributeUtil;
 import com.yupi.yuapicommon.entity.User;
 import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -51,6 +53,7 @@ public class AuthInterceptor {
         HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
         // 当前登录用户
         User user = userService.getLoginUser(request);
+
         // 拥有任意权限即通过
         if (CollectionUtils.isNotEmpty(anyRole)) {
             String userRole = user.getUserRole();
@@ -65,8 +68,15 @@ public class AuthInterceptor {
                 throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
             }
         }
-        // 通过权限校验，放行
-        return joinPoint.proceed();
+        // 设置用户信息到
+        RequestAttributeUtil.setSessionAttribute(request, LoginUserInfo.CURRENT_USER, user);
+        try {
+            // 通过权限校验，放行
+            return joinPoint.proceed();
+        } finally {
+            // 删除用户信息，从请求属性中清除
+            RequestAttributeUtil.removeAttribute(request, LoginUserInfo.CURRENT_USER);
+        }
     }
 }
 
